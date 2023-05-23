@@ -1,0 +1,61 @@
+esphome:
+  name: esp8266-principal
+  friendly_name: Esp8266 Principal
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "u7pNyP9g+T6qhbrKwfRabsHsVhQnmxLa5nswEMV2Qls="
+
+ota:
+  password: "ef42eaf947b860d739037c87d277d7fe"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp8266-Principal"
+    password: "nVYtPKlttusO"
+
+captive_portal:
+
+i2c:
+
+dallas:
+  - pin: GPIO0
+
+switch:
+  - platform: gpio
+    pin: GPIO16
+    name: "Luces1"
+  - platform: gpio
+    pin: GPIO5
+    name: "Luces2"
+  - platform: gpio
+    pin: GPIO2
+    name: "Luces3"
+  - platform: gpio
+    pin: GPIO14
+    name: "Luces4"
+
+sensor:
+  - platform: dht
+    pin: GPIO4
+    temperature:
+      name: "Temperatura"
+    humidity:
+      name: "Humedad"
+    update_interval: 60s
+
+#The address is given after compiling the code in esphome
+  - platform: dallas
+    address: 0xac01204dfef6d928
+    name: "Temperatura Solucion"
