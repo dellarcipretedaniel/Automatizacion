@@ -34,17 +34,21 @@ dallas:
 
 switch:
   - platform: gpio
-    pin: GPIO16
+    pin: GPIO13
     name: "Luces1"
   - platform: gpio
-    pin: GPIO5
+    pin: GPIO15
     name: "Luces2"
   - platform: gpio
-    pin: GPIO2
+    pin: GPIO13
     name: "Luces3"
   - platform: gpio
-    pin: GPIO14
+    pin: GPIO12
     name: "Luces4"
+  - platform: gpio
+    pin: GPIO16
+    name: "Ventilacion"
+
 
 sensor:
   - platform: dht
@@ -55,7 +59,6 @@ sensor:
       name: "Humedad"
     update_interval: 60s
 
-#The address is given after compiling the code in esphome
   - platform: dallas
     address: 0xac01204dfef6d928
     name: "Temperatura Solucion"
