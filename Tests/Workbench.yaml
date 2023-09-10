@@ -1,0 +1,198 @@
+esphome:
+  name: esp8266-taller
+  friendly_name: Esp8266 Taller
+
+esp8266:
+  board: esp01_1m
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "8m+Y6CFk3/l8qzG0kC9pB22YSk7wbIcgNlsJ1A5WPIs="
+#-----------------------Servo-------------------------
+  services:
+    - service: control_servo
+      variables:
+        level: float
+      then:
+       - servo.write:
+           id: servo_control
+           level: !lambda 'return level / 100.0;'
+       - sensor.template.publish:
+           id: servo_sensor
+           state: !lambda 'return (float)level;'
+#-----------------------Servo-------------------------
+
+
+
+ota:
+  password: "239be439e0463009d868681704a6a800"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Esp8266-Taller Fallback Hotspot"
+    password: "Dhi4Z9iXjolb"
+
+captive_portal:
+  
+#-----------------------Sensor Humedad dht11-------------------------
+i2c:
+  sda: GPIO4
+  scl: GPIO5
+  scan: true
+  id: bus_a
+  frequency: 10kHz
+#-----------------------Sensor Humedad dht11-------------------------
+
+switch:
+  - platform: gpio
+    pin: GPIO0
+    #inverted: yes
+    name: "Humidificador"
+#-----------------------Servo-------------------------
+  #Servo switch with start and end position
+  - platform: template
+    id: servo_control_switch
+    name: servo start/end
+    icon: mdi:bathtub
+    #restore_state: true
+    turn_on_action:
+      - sensor.template.publish:
+          id: servo_sensor
+          state: !lambda 'return id(servo_start).state;'
+      - switch.template.publish:
+         id: servo_control_switch
+         state: true
+      - servo.write:
+         id: servo_control
+         level: !lambda 'return (id(servo_start).state/100);'
+    turn_off_action:
+      - sensor.template.publish:
+          id: servo_sensor
+          state: !lambda 'return id(servo_stop).state;'
+      - switch.template.publish:
+         id: servo_control_switch
+         state: false
+      - servo.write:
+         id: servo_control
+         level: !lambda 'return (id(servo_stop).state/100);'
+#-----------------------Servo-------------------------
+sensor:
+#-----------------------Sensor Humedad dht11-------------------------
+  - platform: dht
+    pin: GPIO16
+    temperature:
+      name: "Temperatura vege"
+    humidity:
+      name: "Humedad vege"
+    update_interval: 15s 
+#-----------------------Sensor Humedad dht11-------------------------
+#-----------------------Servo-------------------------
+  #Servomotor position sensor
+  - platform: template
+    name: servo sensor position
+    id: servo_sensor
+    on_value:
+      then:
+        - script.execute: script_servo
+#-----------------------Servo-------------------------
+#Output Platform
+output:
+  - platform: esp8266_pwm
+    id: pwm_output
+    pin: GPIO2
+    frequency: 50 Hz
+
+#Configuration variables: Output (required, ID): ID of the output component to be used for this servo
+servo:
+  - id: servo_control
+    output: pwm_output
+    auto_detach_time: 0s
+    transition_length: 5s
+
+#Script servo script
+script:
+  - id: script_servo
+    then:
+      - if:
+          condition:
+            - lambda: 'return id(servo_sensor).state == id(servo_start).state;'
+          then:
+            - sensor.template.publish:
+               id: servo_sensor
+               state: !lambda 'return (id(servo_start).state/100);'
+            - switch.turn_on: servo_control_switch
+      - if:
+          condition:
+            and:
+              - lambda: 'return id(servo_sensor).state == id(servo_stop).state;'
+          then:
+            - sensor.template.publish:
+               id: servo_sensor
+               state: !lambda 'return id(servo_stop).state;'
+            - switch.turn_off: servo_control_switch
+
+#Adding a slider to control the servo
+number:
+  - platform: template
+    name: servo position
+    min_value: -100
+    max_value: 100
+    update_interval: 5s 
+    mode: slider #slider/box
+    lambda: 'return id(servo_sensor).state;' 
+    step: 0.5
+    set_action:
+      then:
+        - servo.write:
+           id: servo_control
+           level: !lambda 'return x / 100.0;'
+        - sensor.template.publish:
+           id: servo_sensor
+           state: !lambda 'return x;'
+
+#Specify the initial position of the servo
+  - platform: template
+    name: servo start position
+    id: servo_start
+    min_value: -100
+    max_value: 100
+    mode: box #slider/box
+    step: 0.5
+    optimistic: true
+    restore_value: true
+ 
+#Specify the final position of the servo
+  - platform: template
+    name: servo end position
+    id: servo_stop
+    min_value: -100
+    max_value: 100
+    mode: box #slider/box
+    step: 0.5
+    optimistic: true
+    restore_value: true
+#-----------------------Servo-------------------------
+  #- platform: htu21d
+  #  i2c_id: bus_a
+  #  temperature:
+  #    filters:
+  #      - lambda: return x * (9.0/5.0) + 32.0;
+  #    name: "Temperature"
+  #    #accuracy_decimals: 0
+    #  id: box_temp
+  #  humidity:
+  #    filters:
+  #      - lambda: return x * (9.0/5.0) + 32.0;
+  #    name: "Humidity"
+      #accuracy_decimals: 0
+     # id: box_humi
+  #  update_interval: 10s
+      
